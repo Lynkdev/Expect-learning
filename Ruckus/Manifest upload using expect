@@ -1,0 +1,108 @@
+# connect to device via proxy
+
+# remove following line to see full output
+
+log_user 0
+
+spawn ssh localhost $tc_proxy_ssh_port$
+expect "$tc_proxy_login_prompt$"
+send "$tc_user_username$\r"
+expect "$tc_proxy_password_prompt$"
+send "$tc_user_password$\r"
+
+expect "$tc_proxy_prompt$"
+
+set prompt "#"
+set more_prompt "!!unknown!!"
+set config_prompt "!!unknown!!"
+
+set timeout 60
+
+send "connect -info -nosession #$tc_device_id$\r"
+
+expect {
+  -re "__INFO__ enable_prompt = (\[^\r]*)" {
+    set enable_prompt $expect_out(1,string)
+    exp_continue
+  } -re "__INFO__ config_prompt = (\[^\r]*)" {
+    set config_prompt $expect_out(1,string)
+    exp_continue
+  } -re "__INFO__ more_prompt = (\[^\r]*)" {
+    set more_prompt $expect_out(1,string)
+    exp_continue
+  } -re "(Error Message:\[^\r]*)" {
+    puts "$expect_out(1,string)"
+    set _connected "false"
+    expect "$tc_proxy_prompt$"
+    send "exit\r"
+    exit 2
+  } "__INFO__ Ready." {
+  }
+}
+expect "*"
+expect $prompt
+
+send "term len 0\r"
+expect $prompt
+
+set timeout 10
+
+log_user 1
+
+# commands
+
+               
+send "copy tftp system-manifest *.*.*.* FI08070e_Manifest.txt all-images-secondary\r"
+set more true
+expect {
+  -ex "$more_prompt" {
+    send " "
+    exp_continue
+  } $config_prompt {
+  } $prompt {
+  }
+}
+
+# check for previous logout
+# remove following line to see full output
+
+log_user 0
+
+set logged_out false
+set timeout 1
+send "\r"
+expect {
+  "$tc_proxy_prompt$" {
+    set logged_out "true"
+  } timeout {
+  }
+}
+set timeout 10
+
+# disconnect
+if {$logged_out != "true"} {
+  set loop true
+  set idx 0
+  while {$loop == "true"} {
+    if {$idx == 0} {
+      send "exit\r"
+      set idx 1
+    } elseif {$idx == 1} {
+      send "quit\r"
+      set idx 2
+    } else {
+      send "logout\r"
+      set idx 0
+    }
+    expect {
+      $prompt {
+      } $config_prompt {
+      } "$tc_proxy_prompt$" {
+        set loop false
+      }
+    }
+  }
+}
+
+# leave proxy
+send "exit\r"
