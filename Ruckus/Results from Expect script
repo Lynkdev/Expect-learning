@@ -1,0 +1,151 @@
+Results i get from HPNA: 
+
+copy tftp system-manifest *.*.*.* FI08070e_Manifest.txt all-images-secondary
+send: spawn id exp3 not open
+    while executing
+"send "exit\r""
+    invoked from within
+"if {$logged_out != "true"} {
+  set loop true
+  set idx 0
+  while {$loop == "true"} {
+    if {$idx == 0} {
+      send "exit\r"
+      set idx 1
+    } el..."
+    (file "/var/tmp/t164922.t1643710" line 82)
+Please type 'yes' or 'no': 
+
+
+
+
+
+  
+Created temporary file /var/tmp/t164922.t1643710
+Executing command: /opt/NAS/server/ext/expect/bin/expect /var/tmp/t164922.t1643710 Manifest path and file
+copy tftp system-manifest *.*.*.* FI08070e_Manifest.txt all-images-secondary
+send: spawn id exp3 not open
+    while executing
+"send "exit\r""
+    invoked from within
+"if {$logged_out != "true"} {
+  set loop true
+  set idx 0
+  while {$loop == "true"} {
+    if {$idx == 0} {
+      send "exit\r"
+      set idx 1
+    } el..."
+    (file "/var/tmp/t164922.t1643710" line 82)
+Please type 'yes' or 'no': 
+Deleted temporary file  /var/tmp/t164922.t1643710
+--- Script ---
+001 # connect to device via proxy
+002 
+003 # remove following line to see full output
+004 
+005 log_user 0
+006 
+007 spawn ssh localhost 22
+008 expect "NA Login: "
+009 send "*******\r"
+010 expect "Password: "
+011 send "********\r"
+012 
+013 expect "NA>"
+014 
+015 set prompt "#"
+016 set more_prompt "!!unknown!!"
+017 set config_prompt "!!unknown!!"
+018 
+019 set timeout 60
+020 
+021 send "connect -info -nosession #182301\r"
+022 
+023 expect {
+024   -re "__INFO__ enable_prompt = (\[^\r]*)" {
+025     set enable_prompt $expect_out(1,string)
+026     exp_continue
+027   } -re "__INFO__ config_prompt = (\[^\r]*)" {
+028     set config_prompt $expect_out(1,string)
+029     exp_continue
+030   } -re "__INFO__ more_prompt = (\[^\r]*)" {
+031     set more_prompt $expect_out(1,string)
+032     exp_continue
+033   } -re "(Error Message:\[^\r]*)" {
+034     puts "$expect_out(1,string)"
+035     set _connected "false"
+036     expect "NA>"
+037     send "exit\r"
+038     exit 2
+039   } "__INFO__ Ready." {
+040   }
+041 }
+042 expect "*"
+043 expect $prompt
+044 
+045 send "term len 0\r"
+046 expect $prompt
+047 
+048 set timeout 10
+049 
+050 log_user 1
+051 
+052 # commands
+053 
+054                
+055 send "copy tftp system-manifest *.*.*.* FI08070e_Manifest.txt all-images-secondary\r"
+056 set more true
+057 expect {
+058   -ex "y*n" {
+059     send "y\r"
+060     exp_continue
+061   } $prompt {
+062   }
+063 }
+064 
+065 # check for previous logout
+066 # remove following line to see full output
+067 
+068 log_user 0
+069 
+070 set logged_out false
+071 set timeout 1
+072 send "\r"
+073 expect {
+074   "NA>" {
+075     set logged_out "true"
+076   } timeout {
+077   }
+078 }
+079 set timeout 10
+080 
+081 # disconnect
+082 if {$logged_out != "true"} {
+083   set loop true
+084   set idx 0
+085   while {$loop == "true"} {
+086     if {$idx == 0} {
+087       send "exit\r"
+088       set idx 1
+089     } elseif {$idx == 1} {
+090       send "quit\r"
+091       set idx 2
+092     } else {
+093       send "logout\r"
+094       set idx 0
+095     }
+096     expect {
+097       $prompt {
+098       } $config_prompt {
+099       } "NA>" {
+100         set loop false
+101       }
+102     }
+103   }
+104 }
+105 
+106 # leave proxy
+107 send "exit\r"
+--- End of Script---
+HP Network Automation: Script result code = 1 (Failed)
